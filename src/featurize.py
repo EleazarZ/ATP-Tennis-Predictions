@@ -214,3 +214,7 @@ def featurize(
             joblib.dump(featurizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         return train_data, featurizer
+
+
+if __name__ == "__main__":
+    featurize(save=True)

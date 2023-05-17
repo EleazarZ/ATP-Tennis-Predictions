@@ -310,3 +310,7 @@ def process(
         processed_df.to_csv(location.data_process, index=False)
     else:
         return processed_df
+
+
+if __name__ == "__main__":
+    process(save=True)

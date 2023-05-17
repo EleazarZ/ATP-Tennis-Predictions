@@ -25,19 +25,19 @@ docs_save:
 	@echo Save documentation to docs... 
 	PYTHONPATH=src pdoc src -o docs
 
-# data/processed/xy.pkl: data/raw src/process.py
-# 	@echo "Processing data..."
-# 	python src/process.py
+process_data: data/raw src/process.py
+	@echo "Processing data..."
+	python src/process.py
 
-# models/svc.pkl: data/processed/xy.pkl src/train_model.py
-# 	@echo "Training model..."
-# 	python src/train_model.py
+prepare_train: data/processed/processed_data.csv src/featurize.py
+	@echo "Featurizing the processing data and preparing for train..."
+	python src/featurize.py
 
-# notebooks/results.ipynb: models/svc.pkl src/run_notebook.py
-# 	@echo "Running notebook..."
-# 	python src/run_notebook.py
+train_model: data/final/train_data.pkl src/train_model.py
+	@echo "Training model..."
+	python src/train_model.py
 
-# pipeline: data/processed/xy.pkl models/svc.pkl notebooks/results.ipynb
+pipeline: process_data prepare_train train_model
 
 ## Delete all compiled Python files
 clean:
