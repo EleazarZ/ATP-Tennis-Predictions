@@ -1,0 +1,6 @@
+pre-commit
+pytest
+ipykernel
+nbformat>=4.2.0
+prefect
+optuna 

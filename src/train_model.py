@@ -1,11 +1,15 @@
 """Python script to train the model"""
+from typing import TypeVar
+
 import joblib
 import numpy as np
 import pandas as pd
-from config import Location, ModelParams
 from prefect import flow, task
-from sklearn.model_selection import GridSearchCV
-from sklearn.svm import SVC
+from sklearn.base import BaseEstimator
+
+from config import Location, ModelParams
+from finetune import finetune_search
+from model_utils import initialise_model
 
 
 @task
@@ -17,49 +21,76 @@ def get_processed_data(data_location: str):
     data_location : str
         Location to get the data
     """
-    return joblib.load(data_location)
+    with open(data_location, "rb") as file:
+        processed_data = joblib.load(file)
+    return processed_data
 
 
-@task
+@flow
 def train_model(
-    model_params: ModelParams, X_train: pd.DataFrame, y_train: pd.Series
+    model_name: str,
+    model_params: dict,
+    X_train: TypeVar("pandas.core.frame.DataFrame"),  # noqa: F821
+    y_train: TypeVar("pandas.core.series.Series"),  # noqa: F821
 ):
     """Train the model
 
     Parameters
     ----------
-    model_params : ModelParams
+    model_name: str
+        name of the model to train
+    model_params : dict
         Parameters for the model
     X_train : pd.DataFrame
         Features for training
     y_train : pd.Series
         Label for training
     """
-    grid = GridSearchCV(SVC(), model_params.dict(), refit=True, verbose=3)
-    grid.fit(X_train, y_train)
-    return grid
+    model = initialise_model(model_name, model_params)
+    model.fit(X_train, y_train)
+
+    return model
 
 
 @task
-def predict(grid: GridSearchCV, X_test: pd.DataFrame):
+def predict(model: BaseEstimator, X_test: pd.DataFrame):
     """_summary_
 
     Parameters
     ----------
-    grid : GridSearchCV
+    model : estimator
     X_test : pd.DataFrame
         Features for testing
     """
-    return grid.predict(X_test)
+    return model.predict(X_test)
 
 
 @task
-def save_model(model: GridSearchCV, save_path: str):
+def evaluate_model(
+    model: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series
+):
+    """
+    Evaluate the model accuracy performance
+    Parameters
+    ----------
+    model: BaseEstimtor
+        fitted model
+    X_test : pd.DataFrame
+        Features for testing
+    y_test: pd.Series
+        Label for testing
+    """
+    return model.score(X_test, y_test)
+    # return metrics.accuracy_score(y_test, model.predict(X_test), normalize=True)
+
+
+@task
+def save_model(model: BaseEstimator, save_path: str):
     """Save model to a specified location
 
     Parameters
     ----------
-    model : GridSearchCV
+    model : BaseEstimator
     save_path : str
     """
     joblib.dump(model, save_path)
@@ -80,7 +111,7 @@ def save_predictions(predictions: np.array, save_path: str):
 @flow
 def train(
     location: Location = Location(),
-    svc_params: ModelParams = ModelParams(),
+    model_params: ModelParams = ModelParams(),
 ):
     """Flow to train the model
 
@@ -88,12 +119,35 @@ def train(
     ----------
     location : Location, optional
         Locations of inputs and outputs, by default Location()
-    svc_params : ModelParams, optional
+    model_params : ModelParams, optional
         Configurations for training the model, by default ModelParams()
     """
-    data = get_processed_data(location.data_process)
-    model = train_model(svc_params, data["X_train"], data["y_train"])
-    predictions = predict(model, data["X_test"])
+    train_data = get_processed_data(location.train_data)
+    X_train, X_test, y_train, y_test = (
+        train_data["X_train"],
+        train_data["X_test"],
+        train_data["y_train"],
+        train_data["y_test"],
+    )
+
+    if model_params.finetune.enable:
+        best_model_name, best_model_params = finetune_search(
+            X_train, y_train, model_params
+        )
+        model = train_model(
+            best_model_name, best_model_params, X_train, y_train
+        )
+    else:
+        model = train_model(
+            model_params.model_name,
+            model_params.model_params,
+            X_train,
+            y_train,
+        )
+
+    predictions = predict(model, X_test)
+    performance = evaluate_model(model, X_test, y_test)
+    print(performance)
     save_model(model, save_path=location.model)
     save_predictions(predictions, save_path=location.data_final)
 

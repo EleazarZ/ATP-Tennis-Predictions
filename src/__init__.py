@@ -1,1 +1,1 @@
-"""Source code of your project"""
+"""Source code of the project"""
