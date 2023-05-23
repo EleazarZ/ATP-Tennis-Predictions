@@ -1,4 +1,8 @@
 """Python script to process the data"""
+import marshal
+import pickle
+
+import joblib
 import numpy as np
 import pandas as pd
 from prefect import flow, task
@@ -9,8 +13,10 @@ from config import Location, ProcessConfig
 tqdm.pandas()
 
 
-@flow
-def process_row(row, df, n_hist_matches=5, n_hist_confront=3):
+# @flow
+def process_single_match(
+    row, df, n_hist_matches=5, n_hist_confront=3, predict_mode=False
+):
     """
     Apply different operations on the row of a dataframe
     - extract the tournament information
@@ -27,35 +33,49 @@ def process_row(row, df, n_hist_matches=5, n_hist_confront=3):
     -------
         A new row as pandas Series
     """
+    if predict_mode:
+        new_row = row["tourney_info"]
+        for player in ["player1", "player2"]:
+            for k in row[player].keys():
+                new_row[f"{player}_{k}"] = row[player][k]
 
-    new_row = row[["tourney_level", "surface", "best_of"]].to_dict()
+        player1_id = new_row["player1_id"]
+        player2_id = new_row["player2_id"]
 
-    # Treat potential imbalance classes
-    # for odd line indexes, define winner as player1 and loser as player2
-    if row.name % 2 == 0:
-        player1, player2 = "winner", "loser"
-        target = 1
-    else:  # for even line index, do the inverse
-        player1, player2 = "loser", "winner"
-        target = 0
+        # conditions and date of the match
+        tourney_date = new_row["tourney_date"]
+        match_num = new_row["match_num"]
+    else:
+        # conditions and date of the match
+        tourney_date = row["tourney_date"]
+        match_num = row["match_num"]
 
-    new_row["target"] = target  # 1 if player1 win else 0
-    #
-    i = 1
-    for player in [player1, player2]:
-        for c in ["age", "hand", "ht", "rank", "rank_points"]:
-            new_row[f"player{i}_{c}"] = row[f"{player}_{c}"]
-        i += 1
+        new_row = {
+            k: v
+            for k, v in row.items()
+            if k in ["tourney_level", "surface", "best_of"]
+        }
 
-    player1_id = row[f"{player1}_id"]
-    player2_id = row[f"{player2}_id"]
+        # Treat potential imbalance classes
+        # for odd line indexes, define winner as player1 and loser as player2
+        if row["index_level"] % 2 == 0:
+            player1, player2 = "winner", "loser"
+            target = 1
+        else:  # for even line index, do the inverse
+            player1, player2 = "loser", "winner"
+            target = 0
+
+        new_row["target"] = target  # 1 if player1 win else 0
+        #
+        for i, player in enumerate([player1, player2]):
+            for c in ["age", "hand", "ht", "rank", "rank_points"]:
+                new_row[f"player{i+1}_{c}"] = row[f"{player}_{c}"]
+
+        player1_id = row[f"{player1}_id"]
+        player2_id = row[f"{player2}_id"]
 
     new_row["player1_id"] = player1_id
     new_row["player2_id"] = player2_id
-
-    # conditions and date of the match
-    tourney_date = row["tourney_date"]
-    match_num = row["match_num"]
 
     i = 1
     for player_id in [player1_id, player2_id]:
@@ -64,17 +84,17 @@ def process_row(row, df, n_hist_matches=5, n_hist_confront=3):
         )
         if player_stats is not None:
             for k in player_stats.keys():
-                new_row[f"player{i}_{k}"] = player_stats[k]
+                new_row[f"player{i+1}_{k}"] = player_stats[k]
+
         i += 1
 
     new_row["hist_confront"] = hist_confrontation(
         df, player1_id, player2_id, tourney_date, match_num, n_hist_confront
     )
-    new_row = pd.Series(new_row)
     return new_row
 
 
-@task
+# @task
 def hist_confrontation(
     df, player1_id, player2_id, tourney_date, match_num, n_hist
 ):
@@ -97,7 +117,6 @@ def hist_confrontation(
     ) | ((df["winner_id"] == player2_id) & (df["loser_id"] == player1_id))
     tmp = df[mask_player]
 
-    tourney_date = pd.to_datetime(tourney_date)
     mask_tourney_date = (tmp["tourney_date"] < tourney_date) | (
         (tmp["tourney_date"] < tourney_date) & (tmp["match_num"] < match_num)
     )
@@ -111,12 +130,14 @@ def hist_confrontation(
         # print("Non available historical confrontation for players {} and {}".format(player1_id, player2_id))
         return 0
 
-    if len(tmp[tmp["winner_id"] == player1_id]) > len(
-        tmp[tmp["winner_id"] == player2_id]
+    if (
+        tmp[tmp["winner_id"] == player1_id].shape[0]
+        > tmp[tmp["winner_id"] == player2_id].shape[0]
     ):
         result = 1
-    elif len(tmp[tmp["winner_id"] == player2_id]) > len(
-        tmp[tmp["winner_id"] == player1_id]
+    elif (
+        tmp[tmp["winner_id"] == player2_id].shape[0]
+        > tmp[tmp["winner_id"] == player1_id].shape[0]
     ):
         result = -1
     else:
@@ -124,7 +145,7 @@ def hist_confrontation(
     return result
 
 
-@task
+# @task
 def retrieve_player_stats(
     df: pd.DataFrame,
     player_id: int,
@@ -148,7 +169,6 @@ def retrieve_player_stats(
     tmp = df[(df["winner_id"] == player_id) | (df["winner_id"] == player_id)]
 
     # Sorted precedent matches by date
-    tourney_date = pd.to_datetime(tourney_date)
     mask = (tmp["tourney_date"] < tourney_date) | (
         (tmp["tourney_date"] < tourney_date) & (tmp["match_num"] < match_num)
     )
@@ -158,19 +178,21 @@ def retrieve_player_stats(
         by=["tourney_date", "match_num"], ascending=[False, False]
     ).iloc[:n_hist]
 
+    stats_columns = [
+        "1stIn",
+        "1stWon",
+        "2ndWon",
+        "SvGms",
+        "ace",
+        "bpFaced",
+        "bpSaved",
+        "df",
+        "svpt",
+    ]
+
     if tmp.empty:  # Return NaN if there is no data
         # print("Non available historical data for player {}".format(player_id))
-        return {
-            "1stIn": np.nan,
-            "1stWon": np.nan,
-            "2ndWon": np.nan,
-            "SvGms": np.nan,
-            "ace": np.nan,
-            "bpFaced": np.nan,
-            "bpSaved": np.nan,
-            "df": np.nan,
-            "svpt": np.nan,
-        }
+        return {k: None for k in stats_columns}
 
     # Split the data when the player lose or won
     tmp_w = tmp[tmp["winner_id"] == player_id]
@@ -193,20 +215,9 @@ def retrieve_player_stats(
         columns=lambda x: "".join(x.split("_")[1:])
     )
 
-    tmp = pd.concat([tmp_w, tmp_l], axis=0)
+    tmp = tmp_w.merge(tmp_l, how="outer")
 
     # Mean of the match statistics
-    stats_columns = [
-        "1stIn",
-        "1stWon",
-        "2ndWon",
-        "SvGms",
-        "ace",
-        "bpFaced",
-        "bpSaved",
-        "df",
-        "svpt",
-    ]
     stats_dict = tmp[stats_columns].mean().to_dict()
     return stats_dict
 
@@ -296,20 +307,43 @@ def process(
 
     sample_size = int(len(raw_df) * config.sample_size)
 
-    processed_df = raw_df.sample(
+    selected_matches = raw_df.sample(
         sample_size, ignore_index=True, random_state=config.random_state
-    ).progress_apply(
-        lambda row: process_row(
-            row, raw_df, config.n_hist_matches, config.n_hist_confront
-        ),
-        axis=1,
     )
 
-    # Save the new dataframe to a csv file
+    selected_matches[
+        "index_level"
+    ] = selected_matches.reset_index().index.values
+    selected_matches = selected_matches.to_dict(orient="index")
+    processed_data = {
+        k: process_single_match(v, raw_df) for k, v in selected_matches.items()
+    }
+
+    processed_data = pd.DataFrame.from_dict(processed_data, orient="index")
+
     if save:
-        processed_df.to_csv(location.data_process, index=False)
+        # Save the processed dataframe to a csv file
+        processed_data.to_csv(location.data_process, index=False)
+
+        # Serialize the process function and its dependencies
+        with open(location.processor, "wb") as file:
+            marshal.dump(process_single_match.__code__, file)
+            marshal.dump(retrieve_player_stats.__code__, file)
+            marshal.dump(hist_confrontation.__code__, file)
+
+        # Dump the raw data the configs
+        with open(location.config, "wb") as handle:
+            joblib.dump(
+                {
+                    "df": raw_df,
+                    "location": location.dict(),
+                    "processor": config.dict(),
+                },
+                handle,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
     else:
-        return processed_df
+        return processed_data
 
 
 if __name__ == "__main__":

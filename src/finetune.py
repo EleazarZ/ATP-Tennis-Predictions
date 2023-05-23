@@ -1,3 +1,4 @@
+"""Python script to finetune the model"""
 from functools import partial
 from typing import TypeVar, Union
 

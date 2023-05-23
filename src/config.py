@@ -12,7 +12,9 @@ class Location(BaseModel):
 
     data_raw: str = "data/raw/atp_matches_till_2022.csv"
     data_process: str = "data/processed/processed_data.csv"
-    featurizer: str = "data/final/featurizer.pkl"
+    processor: str = "models/processor.pkl"
+    config: str = "models/config.pkl"
+    featurizer: str = "models/featurizer.pkl"
     train_data: str = "data/final/train_data.pkl"
     model: str = "models/model.pkl"
     data_final: str = "data/final/prediction.pkl"
@@ -49,7 +51,7 @@ class ProcessConfig(BaseModel):
     missing_data_threshold_by_row: float = 0.4
     drop_duplicates_subset_columns: list = None
 
-    sample_size: float = 0.0003
+    sample_size: float = 0.001
     random_state: int = 42
     date_columns: List[dict] = [{"name": "tourney_date", "format": "%Y%m%d"}]
     n_hist_matches: int = 5

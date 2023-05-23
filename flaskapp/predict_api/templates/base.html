@@ -1,0 +1,19 @@
+<!doctype html>
+<title>{% block title %}{% endblock %} - ATP Predict</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<nav>
+  <h1>ATP Predict</h1>
+  <ul>
+      <li><a href="{{ url_for('predict') }}">Predict</a>
+      <!-- <li><a href="{{ url_for('predict_input') }}">Predict Input</a> -->  <!--uncomment to add the url  -->
+  </ul>
+</nav>
+<section class="content">
+  <header>
+    {% block header %}{% endblock %}
+  </header>
+  {% for message in get_flashed_messages() %}
+    <div class="flash">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</section>

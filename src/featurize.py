@@ -1,3 +1,4 @@
+"""Python script for features engineering"""
 import pickle
 from typing import Tuple, Union
 

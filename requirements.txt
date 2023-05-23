@@ -5,3 +5,6 @@ shap
 plotly
 xgboost
 matplotlib
+flask
+dash 
+dash_bootstrap_components

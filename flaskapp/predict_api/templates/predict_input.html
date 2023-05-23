@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Input data{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <form method="post">
+      <div>
+        <h4>Tourney data</h4>
+      </div>
+      <div>
+        <label for="tourney_date">Tourney Date</label>
+        <input id="tourney_date" type="text" name="tourney_date" required>
+      </div>
+      <div>
+        <label for="match_num">Match Number</label>
+        <input id="match_num" type="text" name="match_num" required>
+      </div>
+      <div>
+        <label for="tourney_level">Tourney Level</label>
+        <input id="tourney_level" type="text" name="tourney_level" required>        
+      </div>
+      <div>
+          <label for="best_of">Best Of</label>
+          <input id="best_of" type="numeric" name="best_of" required>
+      </div>
+      <div>
+          <label for="surface">Surface</label>
+          <input id="surface" type="text" name="surface" required>
+      </div>
+      <div>
+        <h4>Player 1</h4>
+      </div>
+      <div>
+          <label for="player1_id">ID</label>
+          <input id="player1_id" type="numeric" name="player1_id" required>
+      </div>
+      <div>
+          <label for="player1_age">Age</label>
+          <input id="player1_age" type="numeric" name="player1_age" required>
+      </div>
+      <div>
+      <div>
+        <label for="player1_hand">Hand</label>
+        <input id="player1_hand" type="text" name="player1_hand" required>        
+      </div>
+      <div>
+        <label for="player1_ht">Height</label>
+        <input id="player1_ht" type="numeric" name="player1_ht" required>        
+      </div>
+      <div>
+        <label for="player1_rank">Rank</label>
+        <input id="player1_rank" type="numeric" name="player1_rank" required>        
+      </div>
+      <div>
+        <label for="player1_rank_points">Rank points</label>
+        <input id="player1_rank_points" type="numeric" name="player1_rank_points" required>        
+      </div>
+    <div>
+      <h4>Player 2</h4>
+    </div>
+    <div>
+        <label for="player2_id">ID</label>
+        <input id="player2_id" type="numeric" name="player2_id" required>
+    </div>
+    <div>
+        <label for="player2_age">Age</label>
+        <input id="player2_age" type="numeric" name="player2_age" required>
+    </div>
+    <div>
+      <label for="player2_hand">Hand</label>
+      <input id="player2_hand" type="text" name="player2_hand" required>        
+    </div>
+    <div>
+      <label for="player2_ht">Height</label>
+      <input id="player2_ht" type="numeric" name="player2_ht" required>        
+    </div>
+    <div>
+      <label for="player2_rank">Rank</label>
+      <input id="player2_rank" type="numeric" name="player2_rank" required>        
+    </div>
+    <div>
+      <label for="player2_rank_points">Rank points</label>
+      <input id="player2_rank_points" type="numeric" name="player2_rank_points" required>        
+    </div>
+      <div>
+          <input type="submit" value="Submit">
+      </div>
+  </form>
+{% endblock %}
