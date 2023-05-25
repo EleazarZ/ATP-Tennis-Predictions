@@ -1,6 +1,8 @@
-pre-commit
-pytest
-ipykernel
+ipykernel==6.23.0
+matplotlib==3.7.1
 nbformat>=4.2.0
-prefect
-optuna 
+optuna==3.1.1
+prefect==2.10.9
+pre-commit==3.3.1
+pytest==7.3.1
+shap==0.41.0

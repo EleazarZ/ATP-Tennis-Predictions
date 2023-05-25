@@ -1,0 +1,22 @@
+version: '3'
+services:
+  flaskapp:
+    build: 
+      context: ../
+      dockerfile: app/flaskapp/Dockerfile
+    ports:
+      - "5000:5000"
+    restart: always
+    
+  dashapp:
+    depends_on:
+      - flaskapp
+    build: 
+      context: ../
+      dockerfile: app/dashapp/Dockerfile
+    ports:
+      - "8050:8050"
+    restart: always
+    environment:
+      API_ENDPOINT: "http://flaskapp:5000/predict/"
+    

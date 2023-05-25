@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Python script to run a dash application"""
+import os
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
@@ -12,10 +13,11 @@ from dash import Dash, Input, Output, State, dcc, html
 from views import input_player_attributes, input_tourney_infos
 
 # The api-endpoint
-API_ENDPOINT = "http://127.0.0.1:5000/predict/"
+API_ENDPOINT = os.environ.get("API_ENDPOINT", "http://127.0.0.1:5000/predict/")
 
 # Load the processed data to get the players infos
-models_path = Path(__file__).parent.parent.parent.absolute()
+models_path = Path(__file__).resolve().parent.parent.parent.absolute()
+print(models_path)
 with open(models_path / "models" / "config.pkl", "rb") as handle:
     df = joblib.load(handle)
     df = df["df"]
@@ -270,4 +272,4 @@ def input_palyers_infos(input_value_1, input_value_2):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, host="127.0.0.1", port=8050)
+    app.run_server(debug=True, host="0.0.0.0", port=8050)

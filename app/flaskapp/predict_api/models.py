@@ -14,7 +14,9 @@ class Content(object):
 
     def __init__(self, content_value):
         self.content_value = content_value
-        self.models_path = Path(__file__).parent.parent.parent.absolute()
+        self.models_path = (
+            Path(__file__).resolve().parent.parent.parent.parent.absolute()
+        )
 
     @classmethod
     def predict(cls, content_value):
